@@ -5,18 +5,23 @@ import { promisify } from 'util';
 import { PolicyEvaluationContext } from '../models/Policy';
 import { PolicyEngine } from '../services/PolicyEngine';
 import { ValidationError, ForbiddenError } from '../utils/AppError';
+import { Logger } from '../utils/Logger';
 
 const execPromise = promisify(exec);
 
 export class ExecutionController {
   private executions: Map<string, any> = new Map();
   private policyEngine: PolicyEngine;
+  private logger: Logger;
 
   constructor() {
     // Initialize policy engine
     this.policyEngine = new PolicyEngine();
     // Add default policy for development
     this.policyEngine.addPolicy(PolicyEngine.createDefaultPolicy());
+    
+    // Initialize logger
+    this.logger = new Logger('./logs/execution-controller.log', 'DEBUG', 'ExecutionController');
   }
 
   /**
@@ -25,16 +30,21 @@ export class ExecutionController {
    * @param res Response with execution result
    */
   public async runCommand(req: Request, res: Response): Promise<void> {
+    const requestId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    this.logger.info('runCommand request received', { command: req.body.command, args: req.body.args }, requestId);
+    
     try {
       const { command, args = [], options = {} } = req.body;
       
       // Validate input
       if (!command) {
+        this.logger.warn('runCommand validation failed: Command is required', { command, args }, requestId);
         throw new ValidationError('Command is required');
       }
       
       // Sanitize command and args to prevent injection
       if (!this.isValidCommand(command, args)) {
+        this.logger.warn('runCommand validation failed: Invalid command or arguments', { command, args }, requestId);
         throw new ValidationError('Invalid command or arguments');
       }
       
@@ -49,6 +59,7 @@ export class ExecutionController {
       
       // Check policy
       if (!this.policyEngine.isActionAllowed(context)) {
+        this.logger.warn('runCommand policy check failed: Access denied by policy', { command, args, context }, requestId);
         throw new ForbiddenError('Access denied by policy');
       }
       
@@ -57,18 +68,24 @@ export class ExecutionController {
       // Use Docker for sandboxing if available and enabled, otherwise fallback to direct execution
       const useDocker = process.env.MCP_USE_DOCKER === 'true';
       
+      this.logger.info('runCommand starting execution', { executionId, command, args, useDocker }, requestId);
+      
       if (useDocker) {
         await this.runCommandInDocker(executionId, command, args, options, res);
       } else {
         await this.runCommandDirectly(executionId, command, args, options, res);
       }
+      
+      this.logger.info('runCommand execution completed', { executionId, command, args }, requestId);
     } catch (error: any) {
       if (error instanceof ValidationError) {
+        this.logger.warn('runCommand validation error', { error: error.message }, requestId);
         res.status(400).json({ error: error.message });
       } else if (error instanceof ForbiddenError) {
+        this.logger.warn('runCommand forbidden error', { error: error.message }, requestId);
         res.status(403).json({ error: error.message });
       } else {
-        console.error('Unexpected error in runCommand:', error);
+        this.logger.error('runCommand unexpected error', { error: error.message, stack: error.stack }, requestId);
         res.status(500).json({ error: 'Failed to execute command' });
       }
     }
