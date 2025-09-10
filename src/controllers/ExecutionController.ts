@@ -4,6 +4,7 @@ import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import { PolicyEvaluationContext } from '../models/Policy';
 import { PolicyEngine } from '../services/PolicyEngine';
+import { ValidationError, ForbiddenError } from '../utils/AppError';
 
 const execPromise = promisify(exec);
 
@@ -29,14 +30,12 @@ export class ExecutionController {
       
       // Validate input
       if (!command) {
-        res.status(400).json({ error: 'Command is required' });
-        return;
+        throw new ValidationError('Command is required');
       }
       
       // Sanitize command and args to prevent injection
       if (!this.isValidCommand(command, args)) {
-        res.status(400).json({ error: 'Invalid command or arguments' });
-        return;
+        throw new ValidationError('Invalid command or arguments');
       }
       
       // Create policy evaluation context
@@ -50,8 +49,7 @@ export class ExecutionController {
       
       // Check policy
       if (!this.policyEngine.isActionAllowed(context)) {
-        res.status(403).json({ error: 'Access denied by policy' });
-        return;
+        throw new ForbiddenError('Access denied by policy');
       }
       
       const executionId = this.generateExecutionId();
@@ -64,8 +62,15 @@ export class ExecutionController {
       } else {
         await this.runCommandDirectly(executionId, command, args, options, res);
       }
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to execute command' });
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else if (error instanceof ForbiddenError) {
+        res.status(403).json({ error: error.message });
+      } else {
+        console.error('Unexpected error in runCommand:', error);
+        res.status(500).json({ error: 'Failed to execute command' });
+      }
     }
   }
 

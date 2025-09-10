@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { PolicyEvaluationContext } from '../models/Policy';
 import { PolicyEngine } from '../services/PolicyEngine';
+import { ValidationError, NotFoundError, ForbiddenError, InternalError } from '../utils/AppError';
 
 export class FileController {
   private workspacePath: string;
@@ -33,14 +34,12 @@ export class FileController {
       
       // Validate file path
       if (!filePath) {
-        res.status(400).json({ error: 'File path is required' });
-        return;
+        throw new ValidationError('File path is required');
       }
       
       // Sanitize file path to prevent directory traversal
       if (!this.isValidPath(filePath)) {
-        res.status(400).json({ error: 'Invalid file path' });
-        return;
+        throw new ValidationError('Invalid file path');
       }
       
       const fullPath = path.resolve(path.join(this.workspacePath, filePath));
@@ -56,26 +55,22 @@ export class FileController {
       
       // Check policy
       if (!this.policyEngine.isActionAllowed(context)) {
-        res.status(403).json({ error: 'Access denied by policy' });
-        return;
+        throw new ForbiddenError('Access denied by policy');
       }
       
       // Security check: ensure file is within workspace
       if (!fullPath.startsWith(this.workspacePath)) {
-        res.status(403).json({ error: 'Access denied' });
-        return;
+        throw new ForbiddenError('Access denied');
       }
       
       if (!fs.existsSync(fullPath)) {
-        res.status(404).json({ error: 'File not found' });
-        return;
+        throw new NotFoundError('File not found');
       }
       
       // Check if it's a directory
       const stats = fs.statSync(fullPath);
       if (stats.isDirectory()) {
-        res.status(400).json({ error: 'Path is a directory, not a file' });
-        return;
+        throw new ValidationError('Path is a directory, not a file');
       }
       
       const content = fs.readFileSync(fullPath, 'utf8');
@@ -85,8 +80,17 @@ export class FileController {
       };
       
       res.status(200).json(fileContent);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to read file' });
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else if (error instanceof NotFoundError) {
+        res.status(404).json({ error: error.message });
+      } else if (error instanceof ForbiddenError) {
+        res.status(403).json({ error: error.message });
+      } else {
+        console.error('Unexpected error in getFile:', error);
+        res.status(500).json({ error: 'Failed to read file' });
+      }
     }
   }
 
@@ -101,19 +105,16 @@ export class FileController {
       
       // Validate input
       if (!fileContent.path) {
-        res.status(400).json({ error: 'File path is required' });
-        return;
+        throw new ValidationError('File path is required');
       }
       
       if (fileContent.content === undefined) {
-        res.status(400).json({ error: 'File content is required' });
-        return;
+        throw new ValidationError('File content is required');
       }
       
       // Sanitize file path to prevent directory traversal
       if (!this.isValidPath(fileContent.path)) {
-        res.status(400).json({ error: 'Invalid file path' });
-        return;
+        throw new ValidationError('Invalid file path');
       }
       
       // Create policy evaluation context
@@ -127,16 +128,14 @@ export class FileController {
       
       // Check policy
       if (!this.policyEngine.isActionAllowed(context)) {
-        res.status(403).json({ error: 'Access denied by policy' });
-        return;
+        throw new ForbiddenError('Access denied by policy');
       }
       
       const fullPath = path.resolve(path.join(this.workspacePath, fileContent.path));
       
       // Security check: ensure file is within workspace
       if (!fullPath.startsWith(this.workspacePath)) {
-        res.status(403).json({ error: 'Access denied' });
-        return;
+        throw new ForbiddenError('Access denied');
       }
       
       // Ensure directory exists
@@ -148,8 +147,15 @@ export class FileController {
       fs.writeFileSync(fullPath, fileContent.content, 'utf8');
       
       res.status(200).json({ success: true, message: 'File written successfully' });
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to write file' });
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else if (error instanceof ForbiddenError) {
+        res.status(403).json({ error: error.message });
+      } else {
+        console.error('Unexpected error in writeFile:', error);
+        res.status(500).json({ error: 'Failed to write file' });
+      }
     }
   }
 
@@ -165,8 +171,7 @@ export class FileController {
       
       // Validate directory path
       if (dirPath && !this.isValidPath(dirPath)) {
-        res.status(400).json({ error: 'Invalid directory path' });
-        return;
+        throw new ValidationError('Invalid directory path');
       }
       
       // Create policy evaluation context
@@ -180,45 +185,41 @@ export class FileController {
       
       // Check policy
       if (!this.policyEngine.isActionAllowed(context)) {
-        res.status(403).json({ error: 'Access denied by policy' });
-        return;
+        throw new ForbiddenError('Access denied by policy');
       }
       
       const fullPath = dirPath ? 
         path.resolve(path.join(this.workspacePath, dirPath)) : 
         this.workspacePath;
       
-      console.log(`DEBUG: dirPath="${dirPath}"`);
-      console.log('DEBUG: req.params=', req.params);
-      console.log(`DEBUG: fullPath="${fullPath}"`);
-      console.log(`DEBUG: workspacePath="${this.workspacePath}"`);
-      console.log(`DEBUG: fullPath.startsWith(workspacePath)=${fullPath.startsWith(this.workspacePath)}`);
-      console.log(`DEBUG: fs.existsSync(fullPath)=${fs.existsSync(fullPath)}`);
-      
       // Security check: ensure path is within workspace
       if (!fullPath.startsWith(this.workspacePath)) {
-        res.status(403).json({ error: 'Access denied' });
-        return;
+        throw new ForbiddenError('Access denied');
       }
       
       if (!fs.existsSync(fullPath)) {
-        res.status(404).json({ error: 'Directory not found' });
-        return;
+        throw new NotFoundError('Directory not found');
       }
       
       // Check if it's a file
       const stats = fs.statSync(fullPath);
       if (stats.isFile()) {
-        res.status(400).json({ error: 'Path is a file, not a directory' });
-        return;
+        throw new ValidationError('Path is a file, not a directory');
       }
       
       const files = fs.readdirSync(fullPath);
-      console.log(`DEBUG: files=[${files.join(', ')}]`);
       res.status(200).json({ path: dirPath, files });
-    } catch (error) {
-      console.error('Error listing files:', error);
-      res.status(500).json({ error: 'Failed to list files' });
+    } catch (error: any) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+      } else if (error instanceof NotFoundError) {
+        res.status(404).json({ error: error.message });
+      } else if (error instanceof ForbiddenError) {
+        res.status(403).json({ error: error.message });
+      } else {
+        console.error('Unexpected error in listFiles:', error);
+        res.status(500).json({ error: 'Failed to list files' });
+      }
     }
   }
 
