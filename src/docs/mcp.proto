@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package mcp;
+
+// MCP Server service definition
+service MCPServer {
+  // Session Management
+  rpc InitSession(Capabilities) returns (SessionInfo);
+  rpc ListCapabilities(Empty) returns (Capabilities);
+  rpc GetSession(SessionRequest) returns (SessionInfo);
+  
+  // File Management
+  rpc GetFile(FileRequest) returns (FileContent);
+  rpc WriteFile(FileContent) returns (Status);
+  rpc ListFiles(ListFilesRequest) returns (FileList);
+  
+  // Command Execution
+  rpc RunCommand(CommandRequest) returns (ExecutionResult);
+  rpc GetExecution(ExecutionRequest) returns (ExecutionResult);
+  rpc CancelExecution(ExecutionRequest) returns (Status);
+}
+
+// Empty request
+message Empty {}
+
+// Capabilities
+message Capabilities {
+  repeated string tools = 1;
+}
+
+// Session information
+message SessionInfo {
+  string sessionId = 1;
+  repeated string capabilities = 2;
+}
+
+// Session request
+message SessionRequest {
+  string sessionId = 1;
+}
+
+// File request
+message FileRequest {
+  string path = 1;
+}
+
+// File content
+message FileContent {
+  string path = 1;
+  string content = 2;
+}
+
+// List files request
+message ListFilesRequest {
+  string path = 1;
+}
+
+// File list
+message FileList {
+  string path = 1;
+  repeated string files = 2;
+}
+
+// Command request
+message CommandRequest {
+  string command = 1;
+  repeated string args = 2;
+  map<string, string> options = 3;
+}
+
+// Execution result
+message ExecutionResult {
+  string executionId = 1;
+  int32 exitCode = 2;
+  repeated string logs = 3;
+}
+
+// Execution request
+message ExecutionRequest {
+  string executionId = 1;
+}
+
+// Status response
+message Status {
+  bool success = 1;
+  string message = 2;
+  string error = 3;  // Error message if not successful
+}

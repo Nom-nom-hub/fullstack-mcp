@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "local-fullstack-mcp": {
+      "command": "npm",
+      "args": ["run", "mcp"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  },
+  "defaultMcpServer": "local-fullstack-mcp"
+}

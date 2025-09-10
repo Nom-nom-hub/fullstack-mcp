@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "local-fullstack-mcp": {
+      "command": "npm",
+      "args": [
+        "run",
+        "mcp"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "disabled": false,
+      "alwaysAllow": []
+    }
+  }
+}

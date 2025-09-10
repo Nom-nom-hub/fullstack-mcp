@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+
+  # Sandbox container for executing commands
+  mcp-sandbox:
+    image: node:18-alpine
+    volumes:
+      - ./sandbox:/workspace
+    working_dir: /workspace
+    # Security: Run as non-root user
+    user: "1000:1000"
+    # Security: No privileged access
+    privileged: false
+    # Security: No network access by default
+    network_mode: "none"
+    # Security: Read-only root filesystem
+    read_only: true
+    # Security: Allow writing only to specific directories
+    tmpfs:
+      - /tmp
+    command: sleep infinity

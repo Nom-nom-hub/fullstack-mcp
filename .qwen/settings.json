@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "local-fullstack-mcp": {
+      "name": "Local Fullstack MCP Server",
+      "command": "npx",
+      "args": ["ts-node", "src/mcp-server.ts"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "description": "Local development instance of the Fullstack MCP Server"
+    }
+  },
+  "defaultMcpServer": "local-fullstack-mcp"
+}

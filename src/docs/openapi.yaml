@@ -1,0 +1,421 @@
+openapi: 3.0.3
+info:
+  title: MCP Server API
+  version: 1.0.0
+  description: |
+    Advanced MCP (Model Context Protocol) Server API
+    
+    ## Security Features
+    The MCP Server implements several security measures:
+    
+    1. **Sandboxing**: Commands are executed in isolated Docker containers when enabled
+    2. **Policy Engine**: Fine-grained access control based on policies
+    3. **Input Validation**: Protection against injection attacks and directory traversal
+    4. **Rate Limiting**: Prevention of resource abuse
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /session/init:
+    post:
+      summary: Initialize a session
+      description: Creates a new session with the specified capabilities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Capabilities'
+      responses:
+        '200':
+          description: Session info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfo'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /session/capabilities:
+    get:
+      summary: List all capabilities
+      description: Returns a list of all available capabilities
+      responses:
+        '200':
+          description: Capabilities list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Capabilities'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /session/{sessionId}:
+    get:
+      summary: Get session info by ID
+      description: Returns information about a specific session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionInfo'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/{path}:
+    get:
+      summary: Get file content by path
+      description: |
+        Returns the content of a file at the specified path
+        
+        **Security Considerations:**
+        - Path validation prevents directory traversal attacks
+        - Files must be within the workspace directory
+        - Policy engine enforces access control
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileContent'
+        '400':
+          description: Bad request (invalid path)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied by policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files:
+    post:
+      summary: Write file content
+      description: |
+        Writes content to a file at the specified path
+        
+        **Security Considerations:**
+        - Path validation prevents directory traversal attacks
+        - Files must be within the workspace directory
+        - Policy engine enforces access control
+        - Directories are automatically created if they don't exist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileContent'
+      responses:
+        '200':
+          description: Success message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: Bad request (missing path or content, invalid path)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied by policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /files/list/{path}:
+    get:
+      summary: List files in a directory
+      description: |
+        Returns a list of files in the specified directory
+        
+        **Security Considerations:**
+        - Path validation prevents directory traversal attacks
+        - Directories must be within the workspace directory
+        - Policy engine enforces access control
+      parameters:
+        - name: path
+          in: path
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  files:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Bad request (invalid directory path)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied by policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Directory not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /execute:
+    post:
+      summary: Run a command
+      description: |
+        Executes a command in a sandboxed environment
+        
+        **Security Considerations:**
+        - Command validation prevents injection attacks
+        - Commands are executed in isolated Docker containers when enabled
+        - Policy engine enforces access control
+        - Timeouts prevent resource exhaustion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                args:
+                  type: array
+                  items:
+                    type: string
+                options:
+                  type: object
+                  properties:
+                    timeout:
+                      type: integer
+                      description: Command timeout in milliseconds
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+        '400':
+          description: Bad request (missing command, invalid command or arguments)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Access denied by policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /execute/{executionId}:
+    get:
+      summary: Get execution result by ID
+      description: Returns the result of a specific execution
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResult'
+        '403':
+          description: Access denied by policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Cancel an execution
+      description: Cancels a specific execution
+      parameters:
+        - name: executionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    SessionInfo:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+
+    Capabilities:
+      type: object
+      properties:
+        tools:
+          type: array
+          items:
+            type: string
+
+    FileContent:
+      type: object
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+
+    ExecutionResult:
+      type: object
+      properties:
+        executionId:
+          type: string
+        exitCode:
+          type: number
+        logs:
+          type: array
+          items:
+            type: string
+
+    Policy:
+      type: object
+      properties:
+        id:
+          type: string
+        rules:
+          type: array
+          items:
+            type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

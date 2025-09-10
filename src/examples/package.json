@@ -1,0 +1,12 @@
+{
+  "name": "mcp-examples",
+  "version": "1.0.0",
+  "description": "Examples for using the MCP Server",
+  "main": "qwen-cli-example.js",
+  "scripts": {
+    "example": "node qwen-cli-example.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
