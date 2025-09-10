@@ -70,10 +70,13 @@ app.get('/version', (req, res) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`MCP Server running on port ${port}`);
-  console.log(`API available at http://localhost:${port}/api/${apiVersion}`);
-});
+// Only start the server if this file is run directly
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`MCP Server running on port ${port}`);
+    console.log(`API available at http://localhost:${port}/api/${apiVersion}`);
+  });
+}
 
 export default app;
 export { policyEngine, toolRegistry };

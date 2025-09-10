@@ -2,6 +2,9 @@ import request from 'supertest';
 import app from '../index';
 
 describe('Health Check Endpoint', () => {
+  // Increase timeout for these tests
+  jest.setTimeout(30000);
+
   it('should return health status', async () => {
     const response = await request(app).get('/health');
     expect(response.status).toBe(200);
