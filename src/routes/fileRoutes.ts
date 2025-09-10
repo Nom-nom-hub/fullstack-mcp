@@ -1,8 +1,16 @@
 import { Router } from 'express';
 import { FileController } from '../controllers/FileController';
+import { RequestValidationMiddleware } from '../middleware/validationMiddleware';
 
 const router = Router();
 const fileController = new FileController();
+const validationMiddleware = new RequestValidationMiddleware();
+
+// Validation middleware for writeFile endpoint
+const validateWriteFile = [
+  validationMiddleware.validateRequiredFields(['path', 'content']),
+  validationMiddleware.validateFieldTypes({ path: 'string', content: 'string' })
+];
 
 /**
  * Get file content by path
@@ -15,15 +23,8 @@ const fileController = new FileController();
  */
 router.get('/:path', (req, res) => fileController.getFile(req, res));
 
-/**
- * Write file content
- * @route POST /files
- * @group Files - File management operations
- * @param {FileContent.model} fileContent.body.required - File content object
- * @returns {object} 200 - Success message
- * @returns {Error} 500 - Server error
- */
-router.post('/', (req, res) => fileController.writeFile(req, res));
+/**\n * Write file content\n * @route POST /files\n * @group Files - File management operations\n * @param {FileContent.model} fileContent.body.required - File content object\n * @returns {object} 200 - Success message\n * @returns {Error} 500 - Server error\n */
+router.post('/', validateWriteFile, (req, res) => fileController.writeFile(req, res));
 
 /**
  * List files in a directory

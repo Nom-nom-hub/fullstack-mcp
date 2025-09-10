@@ -1,18 +1,19 @@
 import { Router } from 'express';
 import { ExecutionController } from '../controllers/ExecutionController';
+import { RequestValidationMiddleware } from '../middleware/validationMiddleware';
 
 const router = Router();
 const executionController = new ExecutionController();
+const validationMiddleware = new RequestValidationMiddleware();
 
-/**
- * Run a command
- * @route POST /execute
- * @group Execution - Command execution operations
- * @param {object} command.body.required - Command details
- * @returns {ExecutionResult.model} 200 - Execution result
- * @returns {Error} 500 - Server error
- */
-router.post('/', (req, res) => executionController.runCommand(req, res));
+// Validation middleware for runCommand endpoint
+const validateRunCommand = [
+  validationMiddleware.validateRequiredFields(['command']),
+  validationMiddleware.validateFieldTypes({ command: 'string', args: 'object' })
+];
+
+/**\n * Run a command\n * @route POST /execute\n * @group Execution - Command execution operations\n * @param {object} command.body.required - Command details\n * @returns {ExecutionResult.model} 200 - Execution result\n * @returns {Error} 500 - Server error\n */
+router.post('/', validateRunCommand, (req, res) => executionController.runCommand(req, res));
 
 /**
  * Cancel an execution
