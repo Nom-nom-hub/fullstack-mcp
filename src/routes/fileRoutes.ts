@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { FileController } from '../controllers/FileController';
 import { RequestValidationMiddleware } from '../middleware/validationMiddleware';
 
@@ -21,10 +21,17 @@ const validateWriteFile = [
  * @returns {Error} 404 - File not found
  * @returns {Error} 500 - Server error
  */
-router.get('/:path', (req, res) => fileController.getFile(req, res));
+router.get('/:path', (req: Request, res: Response) => fileController.getFile(req, res));
 
-/**\n * Write file content\n * @route POST /files\n * @group Files - File management operations\n * @param {FileContent.model} fileContent.body.required - File content object\n * @returns {object} 200 - Success message\n * @returns {Error} 500 - Server error\n */
-router.post('/', validateWriteFile, (req, res) => fileController.writeFile(req, res));
+/**
+ * Write file content
+ * @route POST /files
+ * @group Files - File management operations
+ * @param {FileContent.model} fileContent.body.required - File content object
+ * @returns {object} 200 - Success message
+ * @returns {Error} 500 - Server error
+ */
+router.post('/', validateWriteFile, (req: Request, res: Response) => fileController.writeFile(req, res));
 
 /**
  * List files in a directory
@@ -35,9 +42,9 @@ router.post('/', validateWriteFile, (req, res) => fileController.writeFile(req, 
  * @returns {Error} 404 - Directory not found
  * @returns {Error} 500 - Server error
  */
-router.get('/list/:path', (req, res) => fileController.listFiles(req, res));
+router.get('/list/:path', (req: Request, res: Response) => fileController.listFiles(req, res));
 
 // Default list files route (root directory)
-router.get('/list', (req, res) => fileController.listFiles(req, res));
+router.get('/list', (req: Request, res: Response) => fileController.listFiles(req, res));
 
 export default router;

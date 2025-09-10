@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { ExecutionController } from '../controllers/ExecutionController';
 import { RequestValidationMiddleware } from '../middleware/validationMiddleware';
 
@@ -12,8 +12,15 @@ const validateRunCommand = [
   validationMiddleware.validateFieldTypes({ command: 'string', args: 'object' })
 ];
 
-/**\n * Run a command\n * @route POST /execute\n * @group Execution - Command execution operations\n * @param {object} command.body.required - Command details\n * @returns {ExecutionResult.model} 200 - Execution result\n * @returns {Error} 500 - Server error\n */
-router.post('/', validateRunCommand, (req, res) => executionController.runCommand(req, res));
+/**
+ * Run a command
+ * @route POST /execute
+ * @group Execution - Command execution operations
+ * @param {object} command.body.required - Command details
+ * @returns {ExecutionResult.model} 200 - Execution result
+ * @returns {Error} 500 - Server error
+ */
+router.post('/', validateRunCommand, (req: Request, res: Response) => executionController.runCommand(req, res));
 
 /**
  * Cancel an execution
@@ -24,7 +31,7 @@ router.post('/', validateRunCommand, (req, res) => executionController.runComman
  * @returns {Error} 404 - Execution not found
  * @returns {Error} 500 - Server error
  */
-router.delete('/:executionId', (req, res) => executionController.cancelExecution(req, res));
+router.delete('/:executionId', (req: Request, res: Response) => executionController.cancelExecution(req, res));
 
 /**
  * Get execution result by ID
@@ -35,6 +42,6 @@ router.delete('/:executionId', (req, res) => executionController.cancelExecution
  * @returns {Error} 404 - Execution not found
  * @returns {Error} 500 - Server error
  */
-router.get('/:executionId', (req, res) => executionController.getExecution(req, res));
+router.get('/:executionId', (req: Request, res: Response) => executionController.getExecution(req, res));
 
 export default router;
